@@ -1,0 +1,24 @@
+sudo: false
+
+services:
+  - docker
+
+language: scala
+
+jdk:
+  - openjdk8
+  - openjdk11
+
+env:
+  MVN_VERSION="3.6.1"
+
+
+before_install:
+  - curl https://archive.apache.org/dist/maven/maven-$(echo $MVN_VERSION | cut -d '.' -f1)/$MVN_VERSION/binaries/apache-maven-$MVN_VERSION-bin.tar.gz | tar -xzv -C /tmp
+  - export M2_HOME=/tmp/apache-maven-$MVN_VERSION
+  - export PATH=$M2_HOME/bin:$PATH
+  - docker-compose -f docker-compose.yml up -d
+
+branches:
+  only:
+  - master
