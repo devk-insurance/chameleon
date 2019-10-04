@@ -40,6 +40,8 @@ export JAVA_OPTS="-Xms256m -Xmx256m -Dlogback.configurationFile=logback-packaged
 java $JAVA_OPTS -cp "/path/to/chameleon/chameleon-1.0-SNAPSHOT/*" de.devk.chameleon.MainImpl
 ```
 
+For building and running you need at least Java 11.
+
 You can also use Docker to run it:
 ```
 docker run \
