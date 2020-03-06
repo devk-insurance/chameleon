@@ -11,7 +11,11 @@
     <logger name="de.devk.chameleon.UnknownFormat" level="OFF" />
     <logger name="de.devk.chameleon.KnownFormat" level="OFF" />
 
-    <root level="DEBUG">
+    <logger name="de.devk.chameleon" level="DEBUG" />
+
+    <logger name="akka.actor.CoordinatedShutdown" level="DEBUG" />
+
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
 </configuration>

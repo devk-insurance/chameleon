@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 object TestRunnerActor {
   case class SendCheckMkData(metric: String, data: String)
 }
-class TestRunnerActor(remote: InetSocketAddress, testActor: ActorRef)(implicit materializer: ActorMaterializer)
+class TestRunnerActor(remote: InetSocketAddress, testActor: ActorRef)
   extends Actor
   with Stash
   with Logging {

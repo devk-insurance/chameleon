@@ -4,23 +4,21 @@ import java.net.InetSocketAddress
 import java.util.UUID
 
 import akka.actor.{ActorSystem, Props}
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import com.typesafe.config.ConfigFactory
 import de.devk.chameleon.Main
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.flatspec.AnyFlatSpecLike
 
 import scala.concurrent.duration._
 
 class MainTest extends TestKit(ActorSystem("test"))
   with ImplicitSender
-  with FlatSpecLike
+  with AnyFlatSpecLike
   with BeforeAndAfterAll
   with TestDataProvider {
 
   behavior of classOf[Main].getSimpleName
-
-  implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   it should "save CheckMK data in InfluxDB" in {
     val testData = validTestData

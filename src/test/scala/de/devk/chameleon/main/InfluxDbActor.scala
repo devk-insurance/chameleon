@@ -15,7 +15,7 @@ object InfluxDbActor {
   case class QueryRecord(metric: String)
   case class RecordFound(value: Int)
 }
-class InfluxDbActor(responseActor: ActorRef)(implicit materializer: Materializer)
+class InfluxDbActor(responseActor: ActorRef)
   extends Actor
   with Logging {
 

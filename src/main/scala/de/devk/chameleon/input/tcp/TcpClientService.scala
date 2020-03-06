@@ -1,26 +1,23 @@
 package de.devk.chameleon.input.tcp
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Framing, Keep, Sink, Source, Tcp}
+import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
-import akka.{Done, NotUsed}
 import com.typesafe.config.Config
 import de.devk.chameleon.Implicits.FlowOps
-import de.devk.chameleon.input.filter.EventFilterService
 import de.devk.chameleon.jmx.JmxManager
 import de.devk.chameleon.jmx.client.ClientTcpConnectionMetrics
 import de.devk.chameleon.jmx.global.GlobalTcpConnectionMetrics
-import de.devk.chameleon.output.InfluxDbService
-import de.devk.chameleon.{Logging, ShutdownHookService}
+import de.devk.chameleon.Logging
 import org.apache.commons.text.StringEscapeUtils
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
 
-class TcpClientService(config: Config, jmxManager: JmxManager, shutdownHookService: ShutdownHookService)(implicit system: ActorSystem, materializer: ActorMaterializer) extends Logging {
+class TcpClientService(config: Config, jmxManager: JmxManager)(implicit system: ActorSystem) extends Logging {
 
-  private val graphiteEventSizeBytes = config.getInt("graphite.eventSize.bytes")
+  private val graphiteEventSizeBytes = config.getInt("graphite.maxEventSize.bytes")
 
   private val globalTcpConnectionMetrics = new GlobalTcpConnectionMetrics
   jmxManager.registerMBean("de.devk.chameleon.global:type=GlobalTcpConnectionMetrics", globalTcpConnectionMetrics)

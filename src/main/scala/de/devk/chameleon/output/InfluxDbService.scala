@@ -1,22 +1,22 @@
 package de.devk.chameleon.output
 
-import akka.actor.ActorSystem
+import akka.actor.{ActorSystem, CoordinatedShutdown}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
 import akka.{Done, NotUsed}
 import com.typesafe.config.Config
 import de.devk.chameleon.Implicits.ConfigOpts
+import de.devk.chameleon.Implicits.CoordinatedShutdownOps
 import de.devk.chameleon.input.GraphiteData
 import de.devk.chameleon.jmx.JmxManager
 import de.devk.chameleon.jmx.global.GlobalInfluxDbMetrics
-import de.devk.chameleon.{Logging, ShutdownHookService}
+import de.devk.chameleon.Logging
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookService: ShutdownHookService)(implicit actorSystem: ActorSystem, materializer: Materializer) extends Logging {
+class InfluxDbService(config: Config, jmxManager: JmxManager)(implicit actorSystem: ActorSystem) extends Logging {
 
   private val influxDbDatabase = config.getString("influxdb.database")
 
@@ -47,7 +47,7 @@ class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookServic
     Http().cachedHostConnectionPool(influxDbHost, influxDbPort)
 
   logger.info(s"Started HTTP connection pool for $influxDbHost:$influxDbPort")
-  shutdownHookService.prependShutdownHook("HTTP connection pools")(Http().shutdownAllConnectionPools())
+  CoordinatedShutdown(actorSystem).addShutdownTask(CoordinatedShutdown.PhaseServiceStop, "HTTP connection pools")(Http().shutdownAllConnectionPools())
 
   private val httpFlow: Flow[HttpRequest, Try[HttpResponse], NotUsed] =
     Flow[HttpRequest]
