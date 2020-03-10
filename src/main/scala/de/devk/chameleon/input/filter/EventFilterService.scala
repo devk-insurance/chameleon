@@ -4,7 +4,7 @@ import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Flow, GraphDSL, Partition, Sink}
 import com.typesafe.config.Config
-import de.devk.chameleon.Implicits.FlowOps
+import de.devk.chameleon.Implicits.{FlowOps, StringOps}
 import de.devk.chameleon.Logging
 import de.devk.chameleon.input.{DataLine, GraphiteData, UnknownData}
 import de.devk.chameleon.jmx.JmxManager
@@ -60,18 +60,18 @@ class EventFilterService(config: Config, jmxManager: JmxManager) extends Logging
 
           logger.debug(
             s"""Line is in known format:
-               |escaped:   hostname=$hostname, measurement=$measurement, metric=$metric, value=$value, timestamp=$timestamp
-               |unescaped: hostname=$unescapedHostname, measurement=$unescapedMeasurement, metric=$unescapedMetric, value=$value, timestamp=$timestamp
+               |escaped:   hostname=${hostname.logEscape}, measurement=${measurement.logEscape}, metric=${metric.logEscape}, value=${value.logEscape}, timestamp=${timestamp.logEscape}
+               |unescaped: hostname=${unescapedHostname.logEscape}, measurement=${unescapedMeasurement.logEscape}, metric=${unescapedMetric.logEscape}, value=${value.logEscape}, timestamp=${timestamp.logEscape}
                |""".stripMargin)
-          knownFormatLogger.info(s"$remoteAddress: hostname=$hostname, measurement=$measurement, metric=$metric, value=$value, timestamp=$timestamp")
+          knownFormatLogger.info(s"$remoteAddress: hostname=${hostname.logEscape}, measurement=${measurement.logEscape}, metric=${metric.logEscape}, value=${value.logEscape}, timestamp=${timestamp.logEscape}")
 
           eventFilterMetrics.incrementValidIncomingLines()
           clientConnectionEventFilterMetrics.incrementValidIncomingLines()
 
           GraphiteData(unescapedHostname, unescapedMeasurement, unescapedMetric, value, timestamp)
         case other =>
-          logger.debug(s"Line '$other' is in unknown format, ignoring")
-          unknownFormatLogger.info(s"$remoteAddress: $other")
+          logger.debug(s"Line '${other.logEscape}' is in unknown format, ignoring")
+          unknownFormatLogger.info(s"$remoteAddress: ${other.logEscape}")
 
           eventFilterMetrics.incrementBadIncomingLines()
           clientConnectionEventFilterMetrics.incrementBadIncomingLines()

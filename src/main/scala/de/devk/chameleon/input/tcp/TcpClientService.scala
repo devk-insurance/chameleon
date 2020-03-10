@@ -6,11 +6,10 @@ import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
 import com.typesafe.config.Config
 import de.devk.chameleon.Implicits.FlowOps
+import de.devk.chameleon.Logging
 import de.devk.chameleon.jmx.JmxManager
 import de.devk.chameleon.jmx.client.ClientTcpConnectionMetrics
 import de.devk.chameleon.jmx.global.GlobalTcpConnectionMetrics
-import de.devk.chameleon.Logging
-import org.apache.commons.text.StringEscapeUtils
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -58,7 +57,7 @@ class TcpClientService(config: Config, jmxManager: JmxManager)(implicit system: 
         globalTcpConnectionMetrics.incrementIncomingLines()
         tcpConnectionMetrics.incrementIncomingLines()
 
-        StringEscapeUtils.escapeJava(b.utf8String)
+        b.utf8String
       }
   }
 
