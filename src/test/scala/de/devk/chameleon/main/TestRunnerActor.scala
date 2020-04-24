@@ -5,17 +5,18 @@ import java.net.InetSocketAddress
 import akka.actor.{Actor, ActorRef, Props, Stash}
 import akka.io.Tcp.Register
 import akka.io.{IO, Tcp}
-import akka.stream.ActorMaterializer
 import akka.util.ByteString
 import de.devk.chameleon.Logging
-import de.devk.chameleon.main.TestRunnerActor.SendCheckMkData
+import de.devk.chameleon.main.TestRunnerActor.{QueryInfluxDb, SendCheckMkData, SendCheckMkDataAndQueryInfluxDb}
 
 import scala.concurrent.duration._
 
 object TestRunnerActor {
-  case class SendCheckMkData(metric: String, data: String)
+  case class SendCheckMkData(data: String)
+  case class QueryInfluxDb(metric: String)
+  case class SendCheckMkDataAndQueryInfluxDb(metric: String, data: String)
 }
-class TestRunnerActor(remote: InetSocketAddress, testActor: ActorRef)(implicit materializer: ActorMaterializer)
+class TestRunnerActor(remote: InetSocketAddress, testActor: ActorRef)
   extends Actor
   with Stash
   with Logging {
@@ -43,15 +44,25 @@ class TestRunnerActor(remote: InetSocketAddress, testActor: ActorRef)(implicit m
 
       unstashAll()
 
+    case _: SendCheckMkDataAndQueryInfluxDb =>
+      stash()
     case _: SendCheckMkData =>
+      stash()
+    case _: QueryInfluxDb =>
       stash()
   }
 
   def sendCheckMkData(connection: ActorRef): Receive = {
-    case SendCheckMkData(metric, data) =>
+    case SendCheckMkData(data) =>
       connection ! Tcp.Write(ByteString(s"$data\n"))
 
+    case QueryInfluxDb(metric) =>
       influxDbActor ! InfluxDbActor.QueryRecord(metric)
+
+    case SendCheckMkDataAndQueryInfluxDb(metric, data) =>
+      self ! SendCheckMkData(data)
+
+      self ! QueryInfluxDb(metric)
 
     case InfluxDbActor.RecordFound(value) =>
       logger.debug(s"Received query response from InfluxDB: $value")

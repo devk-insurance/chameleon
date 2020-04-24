@@ -1,10 +1,13 @@
 package de.devk.chameleon
 
+import akka.Done
+import akka.actor.{ActorSystem, CoordinatedShutdown}
 import akka.stream.scaladsl.Flow
 import com.typesafe.config.Config
 import de.devk.chameleon.jmx.JmxManager
+import org.apache.commons.text.StringEscapeUtils
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object Implicits {
 
@@ -28,6 +31,17 @@ object Implicits {
           m
         }
     }
+  }
+
+  implicit class CoordinatedShutdownOps(coordinatedShutdown: CoordinatedShutdown) {
+    def addShutdownTask(phase: String, taskName: String)(f: => Future[_])(implicit system: ActorSystem, executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global): Unit = {
+      CoordinatedShutdown(system).addTask(phase, taskName)(() => f.map(_ => Done.done()))
+    }
+  }
+
+  implicit class StringOps(string: String) {
+    def logEscape: String =
+      StringEscapeUtils.escapeJava(string)
   }
 
 }

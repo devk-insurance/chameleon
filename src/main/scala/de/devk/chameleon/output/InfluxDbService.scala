@@ -1,22 +1,25 @@
 package de.devk.chameleon.output
 
-import akka.actor.ActorSystem
+import java.util.Collections
+
+import akka.actor.{ActorSystem, CoordinatedShutdown}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
-import akka.stream.Materializer
 import akka.stream.scaladsl.Flow
 import akka.{Done, NotUsed}
 import com.typesafe.config.Config
-import de.devk.chameleon.Implicits.ConfigOpts
+import de.devk.chameleon.Implicits.{ConfigOpts, CoordinatedShutdownOps, StringOps}
+import de.devk.chameleon.Logging
 import de.devk.chameleon.input.GraphiteData
 import de.devk.chameleon.jmx.JmxManager
 import de.devk.chameleon.jmx.global.GlobalInfluxDbMetrics
-import de.devk.chameleon.{Logging, ShutdownHookService}
+import org.apache.commons.text.translate.{AggregateTranslator, LookupTranslator}
 
 import scala.concurrent.Future
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
-class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookService: ShutdownHookService)(implicit actorSystem: ActorSystem, materializer: Materializer) extends Logging {
+class InfluxDbService(config: Config, jmxManager: JmxManager)(implicit actorSystem: ActorSystem) extends Logging {
 
   private val influxDbDatabase = config.getString("influxdb.database")
 
@@ -25,7 +28,7 @@ class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookServic
 
   private val influxDbWriteUri = {
     val params = Map(
-      "consistency" -> config.getOptionalString("influxdb.consitency"),
+      "consistency" -> config.getOptionalString("influxdb.consistency"),
       "db" -> Some(influxDbDatabase),
       "p" -> config.getOptionalString("influxdb.password"),
       "precision" -> config.getOptionalString("graphite.timestamp.precision"),
@@ -47,7 +50,7 @@ class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookServic
     Http().cachedHostConnectionPool(influxDbHost, influxDbPort)
 
   logger.info(s"Started HTTP connection pool for $influxDbHost:$influxDbPort")
-  shutdownHookService.prependShutdownHook("HTTP connection pools")(Http().shutdownAllConnectionPools())
+  CoordinatedShutdown(actorSystem).addShutdownTask(CoordinatedShutdown.PhaseServiceStop, "HTTP connection pools")(Http().shutdownAllConnectionPools())
 
   private val httpFlow: Flow[HttpRequest, Try[HttpResponse], NotUsed] =
     Flow[HttpRequest]
@@ -58,7 +61,7 @@ class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookServic
   val influxDbFlow: Flow[GraphiteData, Done, NotUsed] = Flow[GraphiteData]
     .batch(influxDbWriteBatchSize, seed => Seq(seed))((seed, element) => seed :+ element)
     .map { data =>
-      logger.debug(s"Sending ${data.size} events to InfluxDB, entity: $data")
+      logger.debug(s"Sending ${data.size} events to InfluxDB, entity: ${data.mkString(", ").logEscape}")
       influxDbMetrics.incrementHttpRequests()
 
       HttpRequest(
@@ -81,6 +84,37 @@ class InfluxDbService(config: Config, jmxManager: JmxManager, shutdownHookServic
     }
 
   private def influxDbString(gL: GraphiteData): String =
-    s"${gL.measurement},host=${gL.hostname},metric=${gL.metric} value=${gL.value} ${gL.timestamp}"
+    s"${escapeMeasurement(gL.measurement)},host=${escapeTagValue(gL.hostname)},metric=${escapeTagValue(gL.metric)} value=${escapeFieldValue(gL.value)} ${gL.timestamp}"
 
+  private def escapeFieldValue(fieldValue: String): String = {
+    escapeMap(Map(
+      "\"" -> "\\\"",
+      "\\" -> "\\\\"
+    )).translate(fieldValue)
+  }
+
+  private def escapeTagKey(tagKey: String): String = {
+    escapeMap(Map(
+      "," -> "\\,",
+      "=" -> "\\=",
+      " " -> "\\ "
+    )).translate(tagKey)
+  }
+
+  private def escapeTagValue(tagValue: String): String =
+    escapeTagKey(tagValue)
+
+  private def escapeFieldKey(fieldKey: String): String =
+    escapeTagKey(fieldKey)
+
+  private def escapeMeasurement(measurement: String): String = {
+    escapeMap(Map(
+      "," -> "\\,",
+      " " -> "\\ "
+    )).translate(measurement)
+  }
+
+  private def escapeMap(map: Map[CharSequence, CharSequence]): AggregateTranslator = new AggregateTranslator(
+    new LookupTranslator(Collections.unmodifiableMap(map.asJava))
+  )
 }
