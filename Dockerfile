@@ -14,4 +14,4 @@ RUN tar -xf /tmp/chameleon-1.0-SNAPSHOT-full-tar.tar -C /opt
 
 WORKDIR /opt/chameleon-1.0-SNAPSHOT
 
-CMD java -Dlogback.configurationFile=logback-packaged.xml -Dconfig.resource=application-packaged.conf $JAVA_OPTS -cp "/opt/chameleon-1.0-SNAPSHOT/*" de.devk.chameleon.MainImpl
+CMD exec java -Dlogback.configurationFile=logback-packaged.xml -Dconfig.resource=application-packaged.conf $JAVA_OPTS -cp "/opt/chameleon-1.0-SNAPSHOT/*" de.devk.chameleon.MainImpl
