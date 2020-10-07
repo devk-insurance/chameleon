@@ -35,7 +35,7 @@ object Implicits {
 
   implicit class CoordinatedShutdownOps(coordinatedShutdown: CoordinatedShutdown) {
     def addShutdownTask(phase: String, taskName: String)(f: => Future[_])(implicit system: ActorSystem, executionContext: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global): Unit = {
-      CoordinatedShutdown(system).addTask(phase, taskName)(() => f.map(_ => Done.done()))
+      coordinatedShutdown.addTask(phase, taskName)(() => f.map(_ => Done.done()))
     }
   }
 

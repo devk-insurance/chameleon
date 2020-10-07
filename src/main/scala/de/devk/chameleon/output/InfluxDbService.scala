@@ -1,7 +1,5 @@
 package de.devk.chameleon.output
 
-import java.util.Collections
-
 import akka.actor.{ActorSystem, CoordinatedShutdown}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -10,13 +8,12 @@ import akka.{Done, NotUsed}
 import com.typesafe.config.Config
 import de.devk.chameleon.Implicits.{ConfigOpts, CoordinatedShutdownOps, StringOps}
 import de.devk.chameleon.Logging
+import de.devk.chameleon.hosttags.HostTagService
 import de.devk.chameleon.input.GraphiteData
 import de.devk.chameleon.jmx.JmxManager
 import de.devk.chameleon.jmx.global.GlobalInfluxDbMetrics
-import org.apache.commons.text.translate.{AggregateTranslator, LookupTranslator}
 
 import scala.concurrent.Future
-import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 class InfluxDbService(config: Config, jmxManager: JmxManager)(implicit actorSystem: ActorSystem) extends Logging {
@@ -58,14 +55,14 @@ class InfluxDbService(config: Config, jmxManager: JmxManager)(implicit actorSyst
         .via(connectionPoolFlow)
         .map(_._1)
 
-  val influxDbFlow: Flow[GraphiteData, Done, NotUsed] = Flow[GraphiteData]
+  val influxDbFlow: Flow[InfluxDbEvent, Done, NotUsed] = Flow[InfluxDbEvent]
     .batch(influxDbWriteBatchSize, seed => Seq(seed))((seed, element) => seed :+ element)
     .map { data =>
       logger.debug(s"Sending ${data.size} events to InfluxDB, entity: ${data.mkString(", ").logEscape}")
       influxDbMetrics.incrementHttpRequests()
 
       HttpRequest(
-        entity = HttpEntity(data.map(influxDbString).mkString("\n")),
+        entity = HttpEntity(data.map(_.lineData).mkString("\n")),
         method = HttpMethods.POST,
         uri = influxDbWriteUri
       )
@@ -83,38 +80,31 @@ class InfluxDbService(config: Config, jmxManager: JmxManager)(implicit actorSyst
         Future.successful(Done)
     }
 
-  private def influxDbString(gL: GraphiteData): String =
-    s"${escapeMeasurement(gL.measurement)},host=${escapeTagValue(gL.hostname)},metric=${escapeTagValue(gL.metric)} value=${escapeFieldValue(gL.value)} ${gL.timestamp}"
+  def graphiteDataToInfluxDbEventFlow(hostTagService: HostTagService): Flow[GraphiteData, InfluxDbEvent, NotUsed] = Flow[GraphiteData].map { data =>
+    val influxDbEvent = InfluxDbEvent(
+      measurement = data.measurement,
+      tags = Map(
+        "host" -> data.hostname,
+        "metric" -> data.metric
+      ),
+      fields = Map(
+        "value" -> data.value
+      ),
+      timestamp = data.timestamp
+    )
 
-  private def escapeFieldValue(fieldValue: String): String = {
-    escapeMap(Map(
-      "\"" -> "\\\"",
-      "\\" -> "\\\\"
-    )).translate(fieldValue)
+    (data.hostname, influxDbEvent)
+  }.mapAsync(1) { case (hostname, influxDbEvent) =>
+    if (hostTagService.enabled) {
+      hostTagService.tags(hostname).map { tagsFromDb =>
+        logger.debug(s"Found ${tagsFromDb.size} tags for hostname $hostname")
+
+        influxDbEvent.copy(
+          tags = influxDbEvent.tags ++ tagsFromDb
+        )
+      }(actorSystem.dispatcher)
+    } else {
+      Future.successful(influxDbEvent)
+    }
   }
-
-  private def escapeTagKey(tagKey: String): String = {
-    escapeMap(Map(
-      "," -> "\\,",
-      "=" -> "\\=",
-      " " -> "\\ "
-    )).translate(tagKey)
-  }
-
-  private def escapeTagValue(tagValue: String): String =
-    escapeTagKey(tagValue)
-
-  private def escapeFieldKey(fieldKey: String): String =
-    escapeTagKey(fieldKey)
-
-  private def escapeMeasurement(measurement: String): String = {
-    escapeMap(Map(
-      "," -> "\\,",
-      " " -> "\\ "
-    )).translate(measurement)
-  }
-
-  private def escapeMap(map: Map[CharSequence, CharSequence]): AggregateTranslator = new AggregateTranslator(
-    new LookupTranslator(Collections.unmodifiableMap(map.asJava))
-  )
 }

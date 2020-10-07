@@ -2,6 +2,7 @@ package de.devk.chameleon
 
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
+import de.devk.chameleon.hosttags.HostTagService
 import de.devk.chameleon.jmx.JmxManager
 
 import scala.concurrent.ExecutionContextExecutor
@@ -19,7 +20,8 @@ abstract class Main(mainConfig: Config) extends App with Logging {
   val config = mainConfig.getConfig("chameleon")
 
   val jmxManager = new JmxManager
-  val completionFuture = new FlowComposer(config, jmxManager).serverBindingFlow
+  val hostTagService = new HostTagService(config, jmxManager)
+  val completionFuture = new FlowComposer(config, hostTagService, jmxManager).serverBindingFlow
 
   completionFuture.onComplete {
     case Success(_) =>

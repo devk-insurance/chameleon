@@ -1,0 +1,1 @@
+CREATE TABLE host_tags (name text PRIMARY KEY, tags text);

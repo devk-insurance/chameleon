@@ -6,13 +6,14 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source, Tcp}
 import akka.util.ByteString
 import com.typesafe.config.Config
 import de.devk.chameleon.Logging
+import de.devk.chameleon.hosttags.HostTagService
 import de.devk.chameleon.input.filter.EventFilterService
 import de.devk.chameleon.jmx.JmxManager
 import de.devk.chameleon.output.InfluxDbService
 
 import scala.concurrent.Future
 
-class TcpServerService(config: Config, jmxManager: JmxManager)(implicit system: ActorSystem) extends Logging {
+class TcpServerService(config: Config, hostTagService: HostTagService, jmxManager: JmxManager)(implicit system: ActorSystem) extends Logging {
 
   private val graphiteInterface = config.getString("graphite.interface")
   private val graphitePort = config.getInt("graphite.port")
@@ -29,6 +30,7 @@ class TcpServerService(config: Config, jmxManager: JmxManager)(implicit system: 
     val flow = Flow[ByteString]
       .via(tcpClientConnectionService.clientConnectionFlow(remoteAddress))
       .via(eventFilterService.eventFilterFlow(remoteAddress))
+      .via(influxDbService.graphiteDataToInfluxDbEventFlow(hostTagService))
       .via(influxDbService.influxDbFlow)
       .map(_ => ByteString.empty)
 

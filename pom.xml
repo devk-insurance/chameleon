@@ -12,11 +12,16 @@
         <java.version>11</java.version>
         <scala.minor.version>2.13</scala.minor.version>
         <scala.version>${scala.minor.version}.1</scala.version>
-        <akka.version>2.6.3</akka.version>
-        <akka.http.version>10.1.11</akka.http.version>
+        <akka.version>2.6.8</akka.version>
+        <akka.http.version>10.2.1</akka.http.version>
         <akka.stream.kafka.version>1.0.4</akka.stream.kafka.version>
-
+        <commons.text.version>1.8</commons.text.version>
         <logback.version>1.2.3</logback.version>
+        <sqlite.jdbc.version>3.32.3.2</sqlite.jdbc.version>
+        <flyway.version>7.0.1</flyway.version>
+        <slick.version>3.3.2</slick.version>
+        <circe.version>0.14.0-M1</circe.version>
+        <akka.http.circe.version>1.35.0</akka.http.circe.version>
 
         <scala.maven.plugin.version>4.3.1</scala.maven.plugin.version>
         <maven.compiler.plugin.version>3.8.1</maven.compiler.plugin.version>
@@ -47,18 +52,48 @@
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-core_${scala.minor.version}</artifactId>
+            <artifactId>akka-http_${scala.minor.version}</artifactId>
             <version>${akka.http.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.8</version>
+            <version>${commons.text.version}</version>
         </dependency>
         <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.xerial</groupId>
+            <artifactId>sqlite-jdbc</artifactId>
+            <version>${sqlite.jdbc.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.slick</groupId>
+            <artifactId>slick_2.13</artifactId>
+            <version>${slick.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.circe</groupId>
+            <artifactId>circe-core_2.13</artifactId>
+            <version>${circe.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.circe</groupId>
+            <artifactId>circe-parser_2.13</artifactId>
+            <version>${circe.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>de.heikoseeberger</groupId>
+            <artifactId>akka-http-circe_${scala.minor.version}</artifactId>
+            <version>${akka.http.circe.version}</version>
         </dependency>
 
         <dependency>
